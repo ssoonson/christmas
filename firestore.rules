@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // One wish inside a board. The writer must be signed in (anonymous sign-in is enough)
+    // and can only add a wish under their own uid.
+    function validItem(it) {
+      return it is map
+        && it.keys().hasOnly(['k', 'text', 'a', 'y', 'seed', 'at', 'uid'])
+        && it.keys().hasAll(['k', 'text', 'a', 'y', 'seed', 'at', 'uid'])
+        && it.uid == request.auth.uid
+        && it.text is string && it.text.size() > 0 && it.text.size() <= 60
+        && it.k is string && it.k.matches('[a-z0-9-]{1,40}')
+        && it.a is number && it.a > -10 && it.a < 10
+        && it.y is number && it.y >= 0.9 && it.y <= 1.6
+        && it.seed is int && it.seed >= 0
+        && it.at is int
+        && it.at > request.time.toMillis() - 600000
+        && it.at < request.time.toMillis() + 600000;
+    }
+
+    function validBoard(d) {
+      return d.keys().hasOnly(['items', 'updated'])
+        && d.items is list
+        && d.items.size() <= 120
+        && d.updated == request.time;
+    }
+
+    // Wishes are grouped into a few "board" documents (up to 120 each) so a visit reads
+    // about 6 documents instead of hundreds. Boards are append-only: anyone can read,
+    // a signed-in visitor can add exactly one wish at the end, nobody can edit or remove
+    // through the page. Remove inappropriate wishes from the Firebase console.
+    match /wishBoards/{boardId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && boardId.matches('s[0-3]-[0-9]{1,6}')
+        && validBoard(request.resource.data)
+        && request.resource.data.items.size() == 1
+        && validItem(request.resource.data.items[0]);
+      allow update: if request.auth != null
+        && validBoard(request.resource.data)
+        && request.resource.data.items.size() == resource.data.items.size() + 1
+        && request.resource.data.items[0:resource.data.items.size()] == resource.data.items
+        && validItem(request.resource.data.items[resource.data.items.size()]);
+      allow delete: if false;
+    }
+  }
+}
