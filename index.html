@@ -1551,10 +1551,27 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
 
   /* where wishes are kept: Firebase when self-hosted, the artifact's own store on claude.ai, else only in this visit */
   const localStore = why => ({ name: 'local', why, canWrite: () => false, add: async () => {}, subscribe() {} });
+  /* read firebase-config.mjs as text, so the Firebase console snippet works pasted as-is */
+  function parseFirebaseConfig(txt) {
+    const code = String(txt).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const cfg = {};
+    const re = /\b(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId|measurementId|databaseURL|emulatorHost)\b["']?\s*:\s*["'`]([^"'`\n]+)["'`]/g;
+    for (const m of code.matchAll(re)) cfg[m[1]] = m[2].trim();
+    return cfg.apiKey && cfg.projectId && !/^YOUR_/i.test(cfg.apiKey) ? cfg : null;
+  }
+  let fbWhy = 'empty';
   async function firebaseStore() {
     let cfg = null;
-    try { cfg = (await import('./firebase-config.mjs')).default; } catch (e) { return null; }
-    if (!cfg || !cfg.apiKey || !cfg.projectId) return null;
+    try {
+      const r = await fetch('./firebase-config.mjs', { cache: 'no-store' });
+      if (r.ok) cfg = parseFirebaseConfig(await r.text());
+      else fbWhy = 'missing';
+    } catch (e) { fbWhy = 'missing'; }
+    if (!cfg && /\.(web\.app|firebaseapp\.com)$/.test(location.hostname)) {
+      try { const r = await fetch('/__/firebase/init.json'); if (r.ok) cfg = await r.json(); } catch (e) { cfg = null; }
+    }
+    if (!cfg || !cfg.apiKey || !cfg.projectId) { console.warn('firebase-config.mjs에서 Firebase 설정(apiKey, projectId)을 찾지 못했어요'); return null; }
+    fbWhy = 'init';
     const fb = await import('./firebase.mjs');
     const { emulatorHost, ...appCfg } = cfg;
     const app = fb.initializeApp(appCfg);
@@ -1563,14 +1580,15 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       fb.connectFirestoreEmulator(fdb, emulatorHost, 8080);
       fb.connectAuthEmulator(auth, 'http://' + emulatorHost + ':9099', { disableWarnings: true });
     }
-    let uid = null;
-    try { uid = (await fb.signInAnonymously(auth)).user.uid; } catch (e) { console.warn('Firebase 익명 로그인에 실패했어요', e); }
+    let uid = null, authError = '';
+    try { uid = (await fb.signInAnonymously(auth)).user.uid; } catch (e) { authError = (e && e.code) || 'auth'; console.warn('Firebase 익명 로그인에 실패했어요', e); }
     /* wishes live in a few append-only "boards" (120 each, 4 shards), so a visit reads about 6 documents */
     const BOARD_MAX = 120, SHARDS = 4, LATEST = 6;
     const known = new Map();
     const lastBoard = s => { let n = 0; for (const id of known.keys()) { const m = /^s(\d)-(\d+)$/.exec(id); if (m && +m[1] === s) n = Math.max(n, +m[2]); } return n; };
     return {
       name: 'firebase',
+      authError,
       canWrite: () => !!uid,
       async add(w) {
         const item = { k: w.k, text: w.text, a: w.a, y: w.y, seed: w.seed, at: Date.now(), uid };
@@ -1845,9 +1863,22 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     wishBusy = b;
     wishBtn.textContent = b ? '소원을 거는 중…' : '소원 적기';
     wishBtn.disabled = b || me.fire < 0;
-    wishNote.textContent = store.name === 'local'
-      ? '지금은 저장소가 연결되지 않아 같은 모닥불 친구들에게만 보여요.'
-      : '적은 글은 광장에 들어오는 모두에게 보여요.';
+    wishNote.textContent = wishNoteText();
+  }
+  function wishNoteText() {
+    if (store.name === 'firebase' && !store.canWrite()) {
+      return store.authError === 'auth/unauthorized-domain'
+        ? 'Firebase 승인된 도메인에 ' + location.hostname + ' 을(를) 추가해야 소원이 저장돼요.'
+        : 'Firebase 익명 로그인이 꺼져 있거나 막혀 있어서 소원을 저장하지 못해요. (' + (store.authError || '로그인 실패') + ')';
+    }
+    if (store.name !== 'local') return '적은 글은 광장에 들어오는 모두에게 보여요.';
+    const why = {
+      empty: 'firebase-config.mjs 에 Firebase 설정이 아직 없어서, 소원이 같은 모닥불 친구들에게만 보여요.',
+      missing: 'firebase-config.mjs 파일을 찾지 못했어요. index.html 과 같은 위치에 있는지 확인해 주세요.',
+      init: 'Firebase에 연결하지 못했어요. firebase-config.mjs 의 값을 확인해 주세요.',
+      claude: '이 화면에서는 소원을 저장할 수 없어서 같은 모닥불 친구들에게만 보여요.',
+    }[store.why];
+    return why || '지금은 저장소가 연결되지 않아 같은 모닥불 친구들에게만 보여요.';
   }
   function closeWish() { wishBox.hidden = true; wishBtn.setAttribute('aria-expanded', 'false'); wishBtn.focus(); }
   wishBtn.addEventListener('click', () => {
@@ -2136,7 +2167,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     setInterval(() => { if (spectating && !seating) findSeat(0); }, 30000);
     try {
       const st = window.claude && typeof window.claude.use === 'function' ? await claudeStore() : await firebaseStore();
-      store = st || localStore(window.claude ? 'claude' : 'nofirebase');
+      store = st || localStore(window.claude ? 'claude' : fbWhy);
     } catch (err) {
       console.warn('소원 저장소에 연결하지 못했어요', err);
       store = localStore('error');
