@@ -1678,6 +1678,21 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   scene.add(notesIM);
   const noteList = [];
   const hangPoint = (a, y) => { const r = env(y) + 0.03; return new V3(Math.cos(a) * r, y, Math.sin(a) * r); };
+  /* where to hang a new wish: the emptiest spot all the way round the tree, nearer my side when there's a tie.
+     Heights stay within 0.95-1.55 (firestore.rules allows 0.9-1.6, and that's what the villagers can reach). */
+  function pickHangSpot(aNear) {
+    const taken = noteList.map(n => n.pos);
+    for (const p of people.values()) if (p.act && p.act.hang) taken.push(p.act.hang);
+    let best = null;
+    for (let i = 0; i < 64; i++) {
+      const a = Math.random() * TAU, y = 0.95 + Math.random() * 0.6, P = hangPoint(a, y);
+      let d = 1.2;
+      for (const q of taken) d = Math.min(d, q.distanceTo(P));
+      const s = d - 0.12 * Math.abs(Math.atan2(Math.sin(a - aNear), Math.cos(a - aNear)));
+      if (!best || s > best.s) best = { a, y, s };
+    }
+    return { a: Math.round(best.a * 1000) / 1000, y: Math.round(best.y * 100) / 100 };
+  }
   function validNote(n) {
     return !!n && typeof n.k === 'string' && /^[a-z0-9-]{1,40}$/.test(n.k) && typeof n.text === 'string' && cleanText(n.text).length > 0
       && (n.nm === undefined || n.nm === null || (typeof n.nm === 'string' && n.nm.length <= NAME_LEN))
@@ -1855,10 +1870,13 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
     const F = FIRES[p.fire], c = F.c, seat = F.seats[p.seat];
     const a0 = Math.atan2(seat.position.z - c.z, seat.position.x - c.x);
     const start = new V3(c.x + Math.cos(a0) * RS, 0, c.z + Math.sin(a0) * RS);
-    const goal = new V3(Math.cos(a) * (env(y) + 0.42), 0, Math.sin(a) * (env(y) + 0.42));
+    /* reach the tree on the side facing my fire, then walk around it to the chosen spot */
+    const aIn = Math.atan2(c.z, c.x), Rg = env(y) + 0.42;
+    const entry = new V3(Math.cos(aIn) * Rg, 0, Math.sin(aIn) * Rg);
     const pts = [start];
-    arcTo(pts, c, RS, a0, Math.atan2(goal.z - c.z, goal.x - c.x));
-    routeTo(pts, pts[pts.length - 1], goal, new Set([F.i]));
+    arcTo(pts, c, RS, a0, Math.atan2(entry.z - c.z, entry.x - c.x));
+    routeTo(pts, pts[pts.length - 1], entry, new Set([F.i]));
+    arcTo(pts, new V3(), Rg, aIn, a);
     const cum = [0];
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
     return { pts, cum, len: cum[cum.length - 1] };
@@ -1996,9 +2014,11 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
     const free = p.free;
     let path;
     if (free) {                              // already up and about: walk straight from here, stay standing after
-      const goal = new V3(Math.cos(w.a) * (env(w.y) + 0.42), 0, Math.sin(w.a) * (env(w.y) + 0.42));
+      const Rg = env(w.y) + 0.42, aIn = Math.atan2(p.pos.z, p.pos.x);
+      const entry = new V3(Math.cos(aIn) * Rg, 0, Math.sin(aIn) * Rg);
       const pts = [p.pos.clone()];
-      routeAround(pts, p.pos, goal, new Set([0]));
+      routeAround(pts, p.pos, entry, new Set([0]));
+      arcTo(pts, new V3(), Rg, aIn, w.a);      // around the tree, never through it
       path = pathOf(pts);
       if (mine) { myRoute = null; marker.visible = false; }
     } else path = planWalk(p, w.a, w.y);
@@ -2378,12 +2398,13 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
     const text = cleanText(wishText.value);
     if (!text) { wishNote.textContent = '한 글자 이상 적어 주세요.'; wishText.focus(); return; }
     if (wishBusy || me.fire < 0) return;
-    const fc = FIRES[me.fire].c;
+    const fc = FIRES[me.fire].c, mp = people.get('me');
+    const spot = pickHangSpot(mp && mp.free ? Math.atan2(mp.pos.z, mp.pos.x) : Math.atan2(fc.z, fc.x));
     me.wish++;
     me.wk = me.tok + '-' + me.wish;
     me.wt = text;
-    me.wa = Math.atan2(fc.z, fc.x) + (Math.random() - 0.5) * 0.8;
-    me.wy = Math.round((1.0 + Math.random() * 0.4) * 100) / 100;
+    me.wa = spot.a;
+    me.wy = spot.y;
     net.setState(stateOut());
     const w = { k: me.wk, text, nm: me.nm, a: me.wa, y: me.wy, seed: me.seed, at: Date.now() };
     wishText.value = ''; wishCount.textContent = '0/' + WISH_LEN;
