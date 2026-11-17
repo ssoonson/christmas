@@ -8,6 +8,8 @@
 - **소원 적기**: 버튼을 누르고 소원이나 걱정을 적어 보내면, 내 캐릭터가 일어나 종이를 들고 트리까지 걸어가요.
   종이를 걸고 손을 흔든 뒤 돌아와 앉아요. 걸린 종이를 누르면 누가 무엇을 적었는지 보여요.
 - **인사**: 자유 채팅은 없어요. 손 흔들기와 정해진 인사말 세 가지만 주고받아요.
+- **걸어 다니기**: 컴퓨터는 방향키·WASD, 휴대폰·태블릿은 왼쪽 아래 조이스틱으로 걸어요. 바닥을 클릭(톡)하면 그곳까지 장애물을 피해 걸어가요.
+  "내 자리에 앉기"로 돌아가 앉고, 다른 모닥불 근처에서는 "이 모닥불에 앉기"로 옮겨 앉아요. 서 있을 때 소원을 적으면 그 자리에서 트리로 가요.
 - 이름과 동물 모자는 들어올 때마다 무작위로 정해져요.
 
 ## 연결 방식
@@ -16,6 +18,7 @@
 |---|---|
 | 같이 앉아 있는 사람 | Trystero(P2P). 공개 Nostr 릴레이로 서로를 찾은 뒤 WebRTC로 직접 연결해요. 같은 모닥불 사람끼리만 연결돼요. |
 | 트리에 걸린 소원 | Firebase Firestore. 나중에 들어온 사람, 다른 모닥불 사람도 볼 수 있어요. |
+| 직접 연결이 막힐 때 | Cloudflare TURN 중계(선택). 5G/LTE·학교·회사 와이파이처럼 직접 연결이 막히는 곳에서도 연결돼요. 아래 "TURN 중계 켜기" 참고. |
 
 Firebase를 연결하기 전에는 소원이 저장되지 않고, 그 순간 같은 모닥불에 있는 사람들에게만 보여요.
 
@@ -45,6 +48,32 @@ Firebase를 연결하기 전에는 소원이 저장되지 않고, 그 순간 같
 firebase emulators:start --only firestore,auth --project demo-plaza
 ```
 
+## TURN 중계 켜기 (선택, 무료)
+
+같은 모닥불인데도 서로 안 보이면(특히 5G/LTE 휴대폰 ↔ 와이파이), 브라우저끼리 직접 연결이 막힌 거예요.
+TURN 서버를 켜면 직접 연결을 먼저 시도하고, 막힐 때만 TURN이 데이터를 대신 전달해요. Cloudflare TURN은 매달 1,000 GB까지 무료예요.
+
+1. **TURN 키 만들기**: Cloudflare 대시보드 → **Realtime**(예전 이름 Calls) → **TURN** 에서 키를 만들고 **Turn Token ID** 와 **API Token** 을 적어 둬요.
+2. **Worker 만들기**: **Workers & Pages → Create → Worker** 로 만든 뒤 **Edit code** 에 `cloudflare-worker/worker.js` 내용을 붙여 넣고 **Deploy** 해요.
+3. **Worker 설정 → Variables and Secrets** 에 세 개를 넣어요.
+
+   | 이름 | 종류 | 값 |
+   |---|---|---|
+   | `TURN_KEY_ID` | Text | Turn Token ID |
+   | `TURN_KEY_API_TOKEN` | **Secret** | API Token |
+   | `ALLOWED_ORIGINS` | Text | `https://ssoonson.github.io` (다른 주소에서도 열면 쉼표로 추가) |
+
+4. 이 저장소의 `turn-config.json` 에 Worker 주소를 넣고 커밋해요.
+
+   ```json
+   { "endpoint": "https://plaza-turn.내계정.workers.dev" }
+   ```
+
+5. GitHub Pages에 반영되면 광장의 상태 줄 끝에 **"중계 켜짐"** 이 보여요.
+   "중계 서버 응답 없음"이면 Worker 주소나 세 가지 설정 값을 다시 확인해요. 그래도 직접 연결은 그대로 시도해요.
+
+TURN API 토큰은 Worker 안에만 있고 페이지에는 4시간짜리 임시 로그인만 전달돼요. `endpoint` 가 비어 있으면 TURN 없이 지금처럼 동작해요.
+
 ## 내 컴퓨터에서 시험하기
 
 `crypto.subtle` 때문에 https 주소나 `localhost` 에서 열어야 함께 보기가 켜져요.
@@ -57,5 +86,5 @@ python3 -m http.server 8000
 
 ## 알아 둘 점
 
-- 방화벽이 엄격한 네트워크에서는 WebRTC 직접 연결이 막혀 TURN 서버가 필요할 수 있어요(Trystero `turnConfig`).
+- 방화벽이 엄격한 네트워크나 5G/LTE에서는 WebRTC 직접 연결이 막힐 수 있어요. 아래 "TURN 중계 켜기"로 해결해요.
 - 에셋 출처는 `CREDITS.md`, 함께 넣은 라이브러리 라이선스는 `THIRD_PARTY_LICENSES.txt` 에 있어요.

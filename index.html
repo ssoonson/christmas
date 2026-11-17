@@ -107,8 +107,42 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
 .loading small{font-family:var(--body);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .loading.done{opacity:0;pointer-events:none}
 
+/* walking: joystick (touch), action column, top-right menu */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.menubtn{pointer-events:auto;flex:none;width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--ink);font:inherit;font-size:20px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.menubtn:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+.menupanel{position:fixed;z-index:40;top:calc(env(safe-area-inset-top,0px) + 68px);right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;padding:10px;background:rgba(12,18,44,.9);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.45);pointer-events:auto}
+.menupanel .controls{display:grid;gap:6px}
+.menupanel .controls button{justify-content:flex-start;width:100%}
+.dockrow{display:flex;align-items:flex-end;justify-content:center;gap:12px;width:100%}
+.actions{display:grid;gap:8px;justify-items:center;min-width:0}
+.emotes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+#emoteToggle{display:none}
+.stick{pointer-events:auto;position:relative;flex:none;width:124px;height:124px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(255,214,150,.08),rgba(12,18,44,.55) 70%);border:1px solid var(--line);touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none}
+.stick::before{content:"";position:absolute;inset:16px;border-radius:50%;border:1px dashed rgba(255,214,150,.2)}
+.knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:var(--ember);box-shadow:0 4px 14px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.12);transition:transform .12s ease;will-change:transform}
+.stick.on .knob{transition:none}
+.stick span{position:absolute;left:-10px;right:-10px;top:-22px;text-align:center;font-size:11px;color:var(--muted);pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.keys{display:inline-flex;gap:3px;align-items:center}
+kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;border:1px solid var(--line);background:rgba(255,255,255,.06);text-align:center;line-height:17px}
+
+/* touch devices: joystick bottom-left, actions stacked bottom-right, settings behind a menu button */
+.touch .menubtn{display:inline-flex}
+.touch .stick{display:block}
+.touch .dockrow{justify-content:space-between;align-items:flex-end}
+.touch .actions{justify-items:end}
+.touch .actions > .controls.main{display:grid;gap:8px;justify-items:end}
+.touch .actions > .controls.main button{min-height:48px;padding:0 18px}
+.touch #emoteToggle{display:inline-flex}
+.touch .emotes{display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 190px);justify-content:center}
+.touch .emotes.open{display:flex}
+.touch .hint{display:none}
+.touch .dock{gap:12px}
+
 @media (max-width:480px){
   .sub{display:none}
+  .eyebrow{display:none}
+  .stick{width:112px;height:112px}
   .plaque{padding:11px 14px;gap:4px}
   .controls button{font-size:13px;padding:0 13px}
   .tag{font-size:11px;padding:2px 8px}
@@ -123,16 +157,19 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
 <div class="tags" id="tags" aria-hidden="true"></div>
 
 <div class="hud">
-  <header class="plaque">
-    <p class="eyebrow">눈 오는 밤 · 마을 한가운데</p>
-    <h1>별빛 트리 광장</h1>
-    <p class="sub">모닥불에 둘러앉아 소원을 적으면 트리에 걸러 다녀와요. 걸린 종이를 누르면 다른 사람의 소원을 읽을 수 있어요.</p>
-    <p class="dday" id="dday">크리스마스까지 D-44</p>
-    <p class="status" id="status" role="status">이름을 정하면 모닥불 자리를 찾아요</p>
-  </header>
+  <div class="topbar">
+    <header class="plaque">
+      <p class="eyebrow">눈 오는 밤 · 마을 한가운데</p>
+      <h1>별빛 트리 광장</h1>
+      <p class="sub">모닥불에서 일어나 광장을 걸어 다니고, 소원을 적으면 트리에 걸러 다녀와요. 걸린 종이를 누르면 다른 사람의 소원을 읽을 수 있어요.</p>
+      <p class="dday" id="dday">크리스마스까지 D-44</p>
+      <p class="status" id="status" role="status">이름을 정하면 모닥불 자리를 찾아요</p>
+    </header>
+    <button type="button" class="menubtn" id="menuBtn" aria-label="보기 설정" aria-expanded="false" aria-controls="menuPanel">⋯</button>
+  </div>
   <div class="dock">
     <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
-    <p class="hint" id="hint">드래그로 둘러보기 · 두 손가락으로 확대 · 친구를 누르면 손을 흔들고 이름을 알려줘요</p>
+    <p class="hint" id="hint"><span class="keys"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span> 또는 WASD로 걷기 · 바닥을 클릭하면 그곳으로 걸어가요 · 드래그로 둘러보기 · 휠로 확대</p>
     <form class="wishbox" id="wishbox" hidden>
       <label for="wishText">트리에 걸 소원이나 걱정을 적어 주세요</label>
       <textarea id="wishText" maxlength="60" rows="2" placeholder="예) 시험이 잘 끝났으면 좋겠어요"></textarea>
@@ -143,21 +180,31 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       </div>
       <p class="wishnote" id="wishNote">적은 글은 광장에 들어오는 모두에게 보여요.</p>
     </form>
-    <div class="controls" role="group" aria-label="인사하기">
-      <button type="button" class="primary" id="wishBtn" aria-expanded="false" aria-controls="wishbox" disabled>소원 적기</button>
+    <div class="controls emotes" id="emotes" role="group" aria-label="인사하기">
       <button type="button" id="wave" disabled>손 흔들기</button>
       <button type="button" data-say="0" disabled>메리 크리스마스!</button>
       <button type="button" data-say="1" disabled>따뜻하다~</button>
       <button type="button" data-say="2" disabled>반가워요!</button>
     </div>
-    <div class="controls minor">
-      <button type="button" id="view" disabled>내 모닥불 보기</button>
-      <button type="button" id="names" aria-pressed="false">이름표 보기</button>
-      <button type="button" id="snow" aria-pressed="true">눈 그치기</button>
-      <button type="button" id="spin" aria-pressed="true">회전 멈추기</button>
+    <div class="dockrow">
+      <div class="stick" id="stick" role="application" aria-label="조이스틱: 끌어서 걷기"><div class="knob" id="knob"></div><span>끌어서 걷기</span></div>
+      <div class="actions">
+        <div class="controls main" role="group" aria-label="내 캐릭터">
+          <button type="button" class="primary" id="wishBtn" aria-expanded="false" aria-controls="wishbox" disabled>소원 적기</button>
+          <button type="button" id="emoteToggle" aria-expanded="false" aria-controls="emotes" disabled>인사하기</button>
+          <button type="button" id="sitBtn" disabled>일어서기</button>
+        </div>
+        <div class="controls minor" id="minor">
+          <button type="button" id="view" disabled>내 모닥불 보기</button>
+          <button type="button" id="names" aria-pressed="false">이름표 보기</button>
+          <button type="button" id="snow" aria-pressed="true">눈 그치기</button>
+          <button type="button" id="spin" aria-pressed="true">회전 멈추기</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+<div class="menupanel" id="menuPanel" hidden></div>
 
 <form class="namebox" id="namebox" hidden>
   <h2>광장에서 쓸 이름</h2>
@@ -213,7 +260,8 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   const coarse = matchMedia('(pointer: coarse)').matches;
   const LOW = coarse || Math.min(innerWidth, innerHeight) < 700;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!coarse) document.getElementById('hint').textContent = '드래그로 둘러보기 · 휠로 확대 · 친구를 누르면 손을 흔들고 이름을 알려줘요';
+  const TOUCH = coarse || (navigator.maxTouchPoints > 0 && !matchMedia('(hover: hover)').matches);
+  if (TOUCH) document.documentElement.classList.add('touch');
 
   /* ---------- renderer ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -584,6 +632,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     return lerp(lerp(lerp(h(xi, yi, zi), h(xi + 1, yi, zi), ux), lerp(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), ux), uy),
       lerp(lerp(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), ux), lerp(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), ux), uy), uz);
   }
+  const ROCK_SPOTS = [[0.42, 15.8, 0.8], [1.25, 16.8, 1.1], [1.95, 15.6, 0.7], [2.55, 16.6, 1.4], [3.55, 15.9, 0.9], [4.2, 16.9, 1.2], [5.05, 15.7, 0.75], [5.7, 16.5, 1.0], [6.05, 17.6, 0.6]];
   function rockGeo(o) {
     const g = new THREE.SphereGeometry(1, 40, 26), p = g.attributes.position, v = new V3();
     for (let i = 0; i < p.count; i++) {
@@ -598,7 +647,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   }
   {
     const mat = rockMat(2, 1);
-    const spots = [[0.42, 15.8, 0.8], [1.25, 16.8, 1.1], [1.95, 15.6, 0.7], [2.55, 16.6, 1.4], [3.55, 15.9, 0.9], [4.2, 16.9, 1.2], [5.05, 15.7, 0.75], [5.7, 16.5, 1.0], [6.05, 17.6, 0.6]];
+    const spots = ROCK_SPOTS;
     spots.forEach(([a, r, s], i) => {
       const m = new THREE.Mesh(rockGeo(i * 3.7), mat);
       m.position.set(Math.cos(a) * r, 0.12 * s, Math.sin(a) * r);
@@ -1294,7 +1343,8 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     tagsLayer.appendChild(sayEl);
     const top = { long: 1.42, deer: 1.32, pointy: 1.32 }[A.ear] || 1.24;
     const p = { grp, upper, head, eyes, armL: arms[0], armR: arms[1], rest, scale, seed, name, label: name, isMe, tagEl, sayEl, legs, foot, paper, T, act: null, wishN: 0,
-      tagUntil: 0, sayUntil: 0, top, fire: -1, seat: -1, ph: Math.random() * TAU, wave: 0, born: -1, blink: 2 + Math.random() * 3 };
+      tagUntil: 0, sayUntil: 0, top, fire: -1, seat: -1, ph: Math.random() * TAU, wave: 0, born: -1, blink: 2 + Math.random() * 3,
+      free: false, wantFree: false, pos: new V3(), yaw: 0, phi: 0, moveW: 0, tgt: null, tgtAt: -1 };
     grp.userData.person = p;
     grp.visible = false;
     scene.add(grp);
@@ -1303,6 +1353,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   function placePerson(p, fire, seat, pop) {
     const a = FIRES[fire].seats[seat];
     p.fire = fire; p.seat = seat;
+    p.free = false;
     p.grp.position.copy(a.position);
     p.grp.quaternion.copy(a.quaternion);
     p.grp.visible = true;
@@ -1347,7 +1398,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
 
   /* ---------- who is here: claude.ai room in the artifact, Trystero P2P when self-hosted ---------- */
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const me = { nm: '', seed: (Math.random() * 2147483647) | 0, tok: Math.random().toString(36).slice(2, 10) || 'x', t: Date.now(), fire: -1, seat: -1, wave: 0, say: 0, sayK: 0, wish: 0, wk: '', wt: '', wa: 0, wy: 1.2 };
+  const me = { nm: '', seed: (Math.random() * 2147483647) | 0, tok: Math.random().toString(36).slice(2, 10) || 'x', t: Date.now(), fire: -1, seat: -1, wave: 0, say: 0, sayK: 0, wish: 0, wk: '', wt: '', wa: 0, wy: 1.2, free: 0, x: 0, z: 0, ry: 0 };
   /* names: a random suggestion by default, or whatever the visitor types (shown as plain text only) */
   const NAME_LEN = 12;
   function cleanName(v) {
@@ -1391,9 +1442,10 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   const valid = st => !!st && isInt(st.seed, 0, 2147483647) && isInt(st.fire, 0, FIRES.length - 1) && isInt(st.seat, 0, SEATS - 1)
     && typeof st.tok === 'string' && /^[a-z0-9]{1,16}$/.test(st.tok) && Number.isFinite(st.t)
     && isInt(st.wave, 0, 1e9) && isInt(st.say, 0, 1e9) && isInt(st.sayK, 0, PHRASES.length - 1) && isInt(st.wish, 0, 1e9)
-    && (st.nm === undefined || (typeof st.nm === 'string' && st.nm.length <= NAME_LEN));
+    && (st.nm === undefined || (typeof st.nm === 'string' && st.nm.length <= NAME_LEN))
+    && (st.free === undefined || st.free === 0 || (st.free === 1 && [st.x, st.z, st.ry].every(Number.isFinite) && Math.abs(st.x) < 40 && Math.abs(st.z) < 40));
   const wishOf = st => ({ k: st.wk, text: st.wt, a: st.wa, y: st.wy, seed: st.seed, nm: cleanName(st.nm), at: Date.now() });
-  const stateOut = () => ({ nm: me.nm, seed: me.seed, tok: me.tok, t: me.t, fire: me.fire, seat: me.seat, wave: me.wave, say: me.say, sayK: me.sayK, wish: me.wish, wk: me.wk, wt: me.wt, wa: me.wa, wy: me.wy });
+  const stateOut = () => ({ nm: me.nm, seed: me.seed, tok: me.tok, t: me.t, fire: me.fire, seat: me.seat, wave: me.wave, say: me.say, sayK: me.sayK, wish: me.wish, wk: me.wk, wt: me.wt, wa: me.wa, wy: me.wy, free: me.free, x: me.x, z: me.z, ry: me.ry });
   const before = (a, b) => (a.t !== b.t ? a.t < b.t : a.tok < b.tok); // a sat down first
 
   function soloTransport(why) {
@@ -1414,6 +1466,43 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       onChange: f => fns.add(f),
     };
   }
+  /* TURN relay for P2P: when two browsers can't reach each other directly (5G/LTE, school or office Wi-Fi),
+     the TURN server passes the data along. turn-config.json next to index.html names a small Cloudflare Worker
+     ({"endpoint": "https://....workers.dev"}) that hands out short-lived TURN logins. No file: plain P2P, as before. */
+  const TURN_REFRESH = 3 * 60 * 60 * 1000;      // the Worker's logins last 4 hours; fetch new ones after 3
+  const turn = { servers: null, at: 0, state: 'off', endpoint: null };
+  async function turnServers() {
+    if (turn.servers && Date.now() - turn.at < TURN_REFRESH) return turn.servers;
+    if (turn.endpoint === null) {
+      turn.endpoint = '';
+      try {
+        const r = await fetch('./turn-config.json', { cache: 'no-store' });
+        if (r.ok) turn.endpoint = String((await r.json()).endpoint || '').trim();
+      } catch (e) { turn.endpoint = ''; }
+      if (turn.endpoint && !/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(turn.endpoint)) { console.warn('turn-config.json의 endpoint는 https:// 주소여야 해요'); turn.endpoint = ''; }
+    }
+    if (!turn.endpoint) { turn.state = 'off'; return null; }
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 5000);
+      const r = await fetch(turn.endpoint, { method: 'POST', signal: ctl.signal, cache: 'no-store' }).finally(() => clearTimeout(timer));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      const list = [].concat(j && j.iceServers || []).filter(s => s && typeof s === 'object')
+        .map(s => {                              // browsers block port 53, so drop those addresses instead of waiting on them
+          const urls = [].concat(s.urls || []).filter(u => typeof u === 'string' && /^(stun|turns?):/.test(u) && !/:53(\?|$)/.test(u));
+          return s.username && s.credential ? { urls, username: String(s.username), credential: String(s.credential) } : { urls };
+        })
+        .filter(s => s.urls.length);
+      if (!list.some(s => s.username && s.urls.some(u => /^turns?:/.test(u)))) throw new Error('응답에 TURN 주소가 없어요');
+      turn.servers = list; turn.at = Date.now(); turn.state = 'on';
+    } catch (e) {
+      console.warn('TURN 중계 서버 정보를 받지 못했어요. 직접 연결만 시도해요', e);
+      turn.state = 'error';
+      if (turn.servers && Date.now() - turn.at < TURN_REFRESH + 50 * 60 * 1000) return turn.servers;   // old logins are still good for a while
+      turn.servers = null;
+    }
+    return turn.servers;
+  }
   async function trysteroTransport() {
     if (!window.isSecureContext) return soloTransport('https 주소에서 열어야 함께 볼 수 있어요');
     const lib = await import('./trystero.mjs');
@@ -1423,8 +1512,9 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     return {
       mode: 'p2p', scope: 'fire',
       async enter(k) {
-        if (room) { room.leave(); peers.clear(); ping(); }
-        room = lib.joinRoom({ appId: 'starlight-plaza-campfires', relayConfig: { warnOnRelayFailure: false } }, 'fire-' + k);
+        if (room) { room.leave(); room = null; act = null; peers.clear(); ping(); }
+        const turnConfig = await turnServers();
+        room = lib.joinRoom({ appId: 'starlight-plaza-campfires', relayConfig: { warnOnRelayFailure: false }, ...(turnConfig ? { turnConfig } : {}) }, 'fire-' + k);
         act = room.makeAction('state');
         room.onPeerJoin = id => { if (!peers.has(id)) peers.set(id, null); if (mine) act.send(mine, { target: id }).catch(() => {}); ping(); };
         room.onPeerLeave = id => { peers.delete(id); ping(); };
@@ -1465,25 +1555,35 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     const moved = me.fire >= 0 && me.fire !== k;
     me.fire = k; me.seat = seat;
     if (first) me.t = Date.now();
-    net.setState(stateOut());
     let p = people.get('me');
-    if (p && p.act) finishAct(p);
-    if (p && p.seed !== me.seed) { removePerson('me'); p = null; }
-    if (!p) { p = makePerson(me.seed, true, me.nm); p.t = me.t; people.set('me', p); }
-    placePerson(p, k, seat, true);
+    const A = p && p.act;
+    if (p && !first && A && A.kind === 'home') {          // walking back to a seat someone else just took: head for the new one
+      p.act = null; p.free = true; startHome(p);
+    } else if (p && !first && (p.free || (A && (A.kind === 'up' || A.free)))) {
+      /* standing or walking: keep the body where it is, the seat is just held for later */
+    } else {
+      if (p && p.act) finishAct(p);
+      if (p && p.seed !== me.seed) { removePerson('me'); p = null; }
+      if (!p) { p = makePerson(me.seed, true, me.nm); p.t = me.t; people.set('me', p); }
+      placePerson(p, k, seat, true);
+      me.free = 0;
+    }
+    net.setState(stateOut());
     p.tagUntil = Infinity;
     relabel();
     setControls(true);
     if (first || moved) {
       announce('모닥불 ' + (k + 1) + '에 앉았어요 · 오늘 이름은 ' + p.name);
-      focusFire();
+      if (first) setTimeout(() => announce(TOUCH ? '왼쪽 아래 조이스틱으로 걷거나, 바닥을 톡 치면 그곳으로 걸어가요' : '방향키나 WASD로 걷고, 바닥을 클릭하면 그곳으로 걸어가요'), 3400);
+      if (!p.free && !p.act) focusFire();
     }
   }
   function leaveSeat() {
-    me.fire = -1; me.seat = -1;
+    me.fire = -1; me.seat = -1; me.free = 0;
+    myRoute = null; pendingGoal = null; marker.visible = false;
     net.setState(stateOut());
     const p = people.get('me');
-    if (p) p.grp.visible = false;
+    if (p) { if (p.act) finishAct(p); p.free = false; p.grp.visible = false; }
     setControls(false);
   }
   function resolveSeat() {
@@ -1516,12 +1616,24 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
         p.t = st.t; p.waveN = st.wave; p.sayN = st.say; p.wishN = st.wish;
         people.set(id, p);
         placePerson(p, st.fire, st.seat, true);
+        p.wantFree = st.free === 1;
+        if (p.wantFree) { standAt(p, st.x, st.z, st.ry); p.tgt = { x: st.x, z: st.z, ry: st.ry }; p.tgtAt = clockT; }
         if (me.fire >= 0 && st.fire === me.fire) {
           p.tagUntil = clockT + 4;
           announce(p.name + josa(p.name, '이', '가') + ' 모닥불에 앉았어요');
         }
-      } else if (p.fire !== st.fire || p.seat !== st.seat) { if (p.act) finishAct(p); placePerson(p, st.fire, st.seat, false); }
+      } else {
+        p.wantFree = st.free === 1;
+        if (p.wantFree && (!p.tgt || p.tgt.x !== st.x || p.tgt.z !== st.z || p.tgt.ry !== st.ry)) { p.tgt = { x: st.x, z: st.z, ry: st.ry }; p.tgtAt = clockT; }
+        if (p.fire !== st.fire || p.seat !== st.seat) {
+          const A = p.act;
+          if (A && A.kind === 'home') { p.act = null; standAt(p, p.grp.position.x, p.grp.position.z, A.yaw); }
+          if (p.free || (A && (A.kind === 'up' || A.free))) { p.fire = st.fire; p.seat = st.seat; }   // walking: syncBody takes them to the new seat
+          else { if (p.act) finishAct(p); placePerson(p, st.fire, st.seat, false); }
+        }
+      }
       p.t = st.t;
+      syncBody(p);
       if (st.wave !== p.waveN) { p.waveN = st.wave; p.wave = 2.4; }
       if (st.say !== p.sayN) { p.sayN = st.say; showSay(p, st.sayK); }
       if (st.wish !== p.wishN) { p.wishN = st.wish; const w = wishOf(st); if (validNote(w)) startWish(p, w, false); }
@@ -1546,7 +1658,10 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     else if (net.mode === 'room') {
       const all = net.peers().filter(p => valid(p.state)).length + 1;
       setStatus(where + (all > 1 ? ' · 광장에 ' + all + '명' : ' · 다른 사람을 기다리는 중'));
-    } else setStatus(where + (n > 1 ? ' · P2P로 연결됨' : ' · P2P로 다른 사람을 기다리는 중'));
+    } else {
+      const relay = turn.state === 'on' ? ' · 중계 켜짐' : turn.state === 'error' ? ' · 중계 서버 응답 없음' : '';
+      setStatus(where + (n > 1 ? ' · P2P로 연결됨' : ' · P2P로 다른 사람을 기다리는 중') + relay);
+    }
   }
 
   /* ---------- wishes: paper notes hung on the tree ---------- */
@@ -1762,12 +1877,133 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   const smooth = k => k * k * (3 - 2 * k);
   const seatYaw = (p) => new THREE.Euler().setFromQuaternion(FIRES[p.fire].seats[p.seat].quaternion, 'YXZ').y;
 
+  /* ---------- walking freely: obstacles, routes, standing up and sitting back down ---------- */
+  const MOVE = 2.4, WALK_R = 22.4, FREE_STRIDE = 0.72;
+  const OBST = [{ c: new V3(0, 0, 0), r: 3.7, cr: 3.35 }];          // [0] is the tree
+  FIRES.forEach(F => OBST.push({ c: F.c, r: RS, cr: 3.0 }));
+  { const F = new V3().setFromMatrixPosition(frameAt(0.48, 12.8)); OBST.push({ c: F, r: 1.2, cr: 0.95 }); }   // snowman
+  PATHS.forEach(a => OBST.push({ c: new V3(Math.cos(a) * LAMP_R, 0, Math.sin(a) * LAMP_R), r: 0.6, cr: 0.38 }));
+  ROCK_SPOTS.forEach(([a, r, s]) => OBST.push({ c: new V3(Math.cos(a) * r, 0, Math.sin(a) * r), r: s * 1.35 + 0.35, cr: s * 1.3 }));
+  function collide(pos) {
+    for (const o of OBST) {
+      const dx = pos.x - o.c.x, dz = pos.z - o.c.z, d = Math.hypot(dx, dz);
+      if (d >= o.cr) continue;
+      if (d < 1e-4) { pos.x = o.c.x + o.cr; continue; }
+      pos.x = o.c.x + dx / d * o.cr; pos.z = o.c.z + dz / d * o.cr;
+    }
+    const r = Math.hypot(pos.x, pos.z);
+    if (r > WALK_R) { pos.x *= WALK_R / r; pos.z *= WALK_R / r; }
+    return pos;
+  }
+  function routeAround(out, P, Q, skip) {
+    let best = null;
+    OBST.forEach((o, i) => { if (skip.has(i)) return; const h = segCircle(P, Q, o.c, o.r); if (h && (!best || h.t0 < best.t0)) best = { o, i, ...h }; });
+    if (!best) { out.push(Q.clone()); return; }
+    const A = P.clone().lerp(Q, best.t0), B = P.clone().lerp(Q, best.t1), c = best.o.c;
+    out.push(A);
+    arcTo(out, c, best.o.r + 0.05, Math.atan2(A.z - c.z, A.x - c.x), Math.atan2(B.z - c.z, B.x - c.x));
+    skip.add(best.i);
+    routeAround(out, B, Q, skip);
+  }
+  function pathOf(pts) {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    return { pts, cum, len: cum[cum.length - 1] };
+  }
+  const groundOf = p => new V3(p.grp.position.x, 0, p.grp.position.z);
+  function approachOf(p) {
+    const F = FIRES[p.fire], c = F.c, seat = F.seats[p.seat];
+    const a = Math.atan2(seat.position.z - c.z, seat.position.x - c.x);
+    return { a, pos: new V3(c.x + Math.cos(a) * RS, 0, c.z + Math.sin(a) * RS) };
+  }
+  function standAt(p, x, z, yaw) {
+    p.free = true; p.pos.set(x, 0, z); p.yaw = yaw; p.moveW = 0;
+    p.paper.visible = false;
+  }
+  function startUp(p) {                     // seat -> just outside the log ring, facing away from the fire
+    if (p.fire < 0 || p.seat < 0) return;
+    const { a, pos } = approachOf(p);
+    const out = pos.clone().add(new V3(Math.cos(a), 0, Math.sin(a)));
+    p.act = { kind: 'up', phase: 'stand', t: 0, t0: clockT, w: null, path: { pts: [pos, out] }, seatPos: FIRES[p.fire].seats[p.seat].position.clone(), yaw0: seatYaw(p), yaw: seatYaw(p), phi: 0 };
+    p.free = false;
+  }
+  function startHome(p) {                   // wherever I am -> around anything in the way -> my seat
+    if (p.fire < 0 || p.seat < 0) return;
+    const from = groundOf(p), { pos } = approachOf(p);
+    const pts = [from];
+    routeAround(pts, from, pos, new Set());
+    const yaw = p.free ? p.yaw : (p.act ? p.act.yaw : 0);
+    p.act = { kind: 'home', phase: 'back', t: 0, t0: clockT, w: null, back: pathOf(pts), speed: MOVE * 0.85, seatPos: FIRES[p.fire].seats[p.seat].position.clone(), yaw0: yaw, yaw, phi: 0 };
+    p.free = false;
+  }
+  function syncBody(p) {                    // other people: follow what their presence says
+    if (p.isMe || p.act || p.fire < 0 || !p.grp.visible) return;
+    if (p.wantFree && !p.free) startUp(p);
+    else if (!p.wantFree && p.free) startHome(p);
+  }
+  function nearFire(pos) {
+    let best = -1, bd = RS + 2.4;
+    FIRES.forEach(F => { const d = Math.hypot(pos.x - F.c.x, pos.z - F.c.z); if (d < bd) { bd = d; best = F.i; } });
+    return best;
+  }
+  function stepFree(p, dt, t, w) {
+    const px = p.pos.x, pz = p.pos.z;
+    if (p.isMe) {
+      const v = inputDir();
+      if (v) {
+        if (myRoute) { myRoute = null; marker.visible = false; }
+        p.pos.x += v.x * MOVE * dt; p.pos.z += v.z * MOVE * dt;
+      } else if (myRoute) {
+        const R = myRoute, q = R.pts[R.i];
+        const dx = q.x - p.pos.x, dz = q.z - p.pos.z, d = Math.hypot(dx, dz);
+        if (d < 0.08) { R.i++; if (R.i >= R.pts.length) { myRoute = null; marker.visible = false; } }
+        else { const s = Math.min(d, MOVE * dt); p.pos.x += dx / d * s; p.pos.z += dz / d * s; }
+      }
+      collide(p.pos);
+      if (myRoute) {                        // give up if something keeps us from getting anywhere
+        const got = Math.hypot(p.pos.x - px, p.pos.z - pz);
+        myRoute.stuck = got < MOVE * dt * 0.2 ? myRoute.stuck + dt : 0;
+        if (myRoute.stuck > 0.6) { myRoute = null; marker.visible = false; }
+      }
+    } else if (p.tgt) {
+      const dx = p.tgt.x - p.pos.x, dz = p.tgt.z - p.pos.z, d = Math.hypot(dx, dz);
+      if (d > 8) p.pos.set(p.tgt.x, 0, p.tgt.z);
+      else if (d > 0.004) { const s = Math.min(d, clamp(d * 5, 0.6, MOVE * 1.7) * dt); p.pos.x += dx / d * s; p.pos.z += dz / d * s; }
+    }
+    const mx = p.pos.x - px, mz = p.pos.z - pz, moved = Math.hypot(mx, mz), speed = moved / Math.max(dt, 1e-3);
+    if (speed > 0.25) p.yaw = lerpAngle(p.yaw, Math.atan2(mx, mz), Math.min(1, dt * 12));
+    else if (!p.isMe && p.tgt) p.yaw = lerpAngle(p.yaw, p.tgt.ry, Math.min(1, dt * 6));
+    p.moveW += ((speed > 0.25 ? 1 : 0) - p.moveW) * Math.min(1, dt * 10);
+    p.phi += moved / FREE_STRIDE * PI;
+    const k = p.moveW, standY = SEAT_H + p.T * p.scale, y = standY + Math.abs(Math.sin(p.phi)) * 0.035 * k;
+    p.grp.position.set(p.pos.x, y, p.pos.z);
+    p.grp.rotation.set(0, p.yaw, 0);
+    p.legs.forEach((l, i) => {
+      l.hip.rotation.x = -0.55 * Math.sin(p.phi + i * PI) * k;
+      l.knee.rotation.x = 0.04 + (0.08 + 0.6 * Math.max(0, Math.sin(p.phi + i * PI - 1.3))) * k;
+    });
+    p.foot.position.set(0, (0.03 - y) / p.scale, 0.05);
+    const swing = Math.sin(p.phi) * k;
+    p.armL.rotation.set(-0.15 - 0.45 * swing, 0, -0.12);
+    const rx = -0.15 + 0.45 * swing;
+    p.armR.rotation.set(rx + (-2.6 - rx) * w, 0, 0.12 + (0.35 + Math.sin(t * 11) * 0.45 - 0.12) * w);
+    p.upper.rotation.set(0.06 * k + Math.sin(t * 0.7 + p.ph) * 0.02 * (1 - k), 0, Math.sin(p.phi) * 0.05 * k);
+  }
+
   function startWish(p, w, mine) {
     if (p.fire < 0 || p.seat < 0) { addNote(w, true); return; }
     if (p.act) finishAct(p);
-    const path = planWalk(p, w.a, w.y);
+    const free = p.free;
+    let path;
+    if (free) {                              // already up and about: walk straight from here, stay standing after
+      const goal = new V3(Math.cos(w.a) * (env(w.y) + 0.42), 0, Math.sin(w.a) * (env(w.y) + 0.42));
+      const pts = [p.pos.clone()];
+      routeAround(pts, p.pos, goal, new Set([0]));
+      path = pathOf(pts);
+      if (mine) { myRoute = null; marker.visible = false; }
+    } else path = planWalk(p, w.a, w.y);
     inFlight.add(w.k);
-    p.act = { phase: 'stand', t: 0, w, mine, path, back: reversePath(path), seatPos: FIRES[p.fire].seats[p.seat].position.clone(), yaw0: seatYaw(p), yaw: seatYaw(p), hang: hangPoint(w.a, w.y), phi: 0 };
+    p.act = { kind: 'wish', free, phase: free ? 'walk' : 'stand', t: 0, t0: clockT, w, mine, path, back: free ? null : reversePath(path), seatPos: FIRES[p.fire].seats[p.seat].position.clone(), yaw0: free ? p.yaw : seatYaw(p), yaw: free ? p.yaw : seatYaw(p), hang: hangPoint(w.a, w.y), phi: 0 };
     p.paper.visible = true;
     p.tagUntil = Math.max(p.tagUntil, clockT + 2);
     if (mine) setWishBusy(true);
@@ -1775,13 +2011,24 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   function finishAct(p) {
     const A = p.act;
     if (!A) return;
-    if (!notes.has(A.w.k)) addNote(A.w, false);
-    inFlight.delete(A.w.k);
+    if (A.w) { if (!notes.has(A.w.k)) addNote(A.w, false); inFlight.delete(A.w.k); }
     p.act = null;
     p.paper.visible = false;
-    if (p.fire >= 0) placePerson(p, p.fire, p.seat, false);
-    poseSit(p);
-    if (A.mine) { setWishBusy(false); if (viewMode === 'walk') focusFire(); }
+    const endFree = A.kind === 'up' || (A.kind === 'wish' && A.free);
+    if (endFree) {
+      const g = A.kind === 'up' ? A.path.pts[0] : groundOf(p);
+      standAt(p, g.x, g.z, A.yaw);
+      if (!p.isMe && !(p.tgtAt > A.t0)) p.tgt = { x: g.x, z: g.z, ry: A.yaw };
+    } else {
+      if (p.fire >= 0) placePerson(p, p.fire, p.seat, false);
+      poseSit(p);
+    }
+    if (A.mine && A.w) { setWishBusy(false); if (viewMode === 'walk') focusFire(); }
+    if (p.isMe) {
+      if (A.kind === 'up' && pendingGoal) { setRoute(p, pendingGoal); pendingGoal = null; }
+      if (A.kind === 'home' && viewMode === 'me') focusFire();
+      updateSitBtn();
+    } else syncBody(p);
   }
   function poseSit(p) {
     p.legs.forEach(l => { l.hip.rotation.x = -PI / 2; l.knee.rotation.x = PI / 2; });
@@ -1814,11 +2061,11 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       const dirYaw = A.phase === 'stand' ? Math.atan2(A.path.pts[1].x - A.path.pts[0].x, A.path.pts[1].z - A.path.pts[0].z) : A.yaw0;
       A.yaw = lerpAngle(A.phase === 'stand' ? A.yaw0 : A.yaw, dirYaw, A.phase === 'stand' ? k : Math.min(1, k * 1.5));
       if (A.t >= STAND) {
-        if (A.phase === 'stand') { A.phase = 'walk'; A.t = 0; }
+        if (A.phase === 'stand' && A.kind !== 'up') { A.phase = 'walk'; A.t = 0; }
         else { finishAct(p); return; }
       }
     } else if (A.phase === 'walk' || A.phase === 'back') {
-      const path = A.phase === 'walk' ? A.path : A.back, d = A.t * SPEED;
+      const path = A.phase === 'walk' ? A.path : A.back, d = A.t * (A.speed || SPEED);
       const dir = along(path, d, _pos);
       A.yaw = lerpAngle(A.yaw, dir, Math.min(1, dt * 8));
       A.phi = d / STRIDE * PI;
@@ -1843,7 +2090,10 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       A.yaw = lerpAngle(A.yaw, away, Math.min(1, dt * 5));
       const w = Math.max(0, Math.min(1, A.t / 0.35, (WAVE - A.t) / 0.3));
       armR = [-0.3 + (-2.6 + 0.3) * w, 0.35 * w + Math.sin(t * 11) * 0.45 * w];
-      if (A.t >= WAVE) { A.phase = 'back'; A.t = 0; }
+      if (A.t >= WAVE) {
+        if (A.free) { finishAct(p); return; }
+        A.phase = 'back'; A.t = 0;
+      }
     }
     applyBody(p, _pos, y, A.yaw, sitW, A.phi, moving);
     const swing = moving ? Math.sin(A.phi) : 0;
@@ -1903,7 +2153,173 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   const waveBtn = document.getElementById('wave'), sayBtns = [...document.querySelectorAll('[data-say]')];
   const viewBtn = document.getElementById('view'), namesBtn = document.getElementById('names');
   const snowBtn = document.getElementById('snow'), spinBtn = document.getElementById('spin');
-  function setControls(on) { [waveBtn, ...sayBtns].forEach(b => { b.disabled = !on; }); setViewLabel(); if (typeof wishBtn !== 'undefined') setWishBusy(wishBusy); }
+  const sitBtn = document.getElementById('sitBtn'), emoteToggle = document.getElementById('emoteToggle'), emotesEl = document.getElementById('emotes');
+  function setControls(on) { [waveBtn, ...sayBtns, emoteToggle].forEach(b => { b.disabled = !on; }); setViewLabel(); updateSitBtn(); if (typeof wishBtn !== 'undefined') setWishBusy(wishBusy); }
+
+  /* ---------- moving my character: keys, joystick, click/tap on the ground ---------- */
+  let myRoute = null, pendingGoal = null, mySitting = false;
+  const marker = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.3, 40).rotateX(-PI / 2),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffbf66).multiplyScalar(2.4), transparent: true, opacity: 0.9, depthWrite: false }));
+  marker.renderOrder = 4; marker.visible = false;
+  scene.add(marker);
+  const keys = new Set();
+  const KEYMAP = { ArrowUp: 'f', KeyW: 'f', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r' };
+  const stick = { x: 0, y: 0, id: null };
+  const _cf = new V3();
+  function inputDir() {
+    const has = k => [...keys].some(c => KEYMAP[c] === k);
+    let fwd = (has('f') ? 1 : 0) - (has('b') ? 1 : 0) - stick.y;
+    let side = (has('r') ? 1 : 0) - (has('l') ? 1 : 0) + stick.x;
+    const m = Math.hypot(fwd, side);
+    if (m < 0.05) return null;
+    if (m > 1) { fwd /= m; side /= m; }
+    _cf.subVectors(controls.target, camera.position); _cf.y = 0;
+    if (_cf.lengthSq() < 1e-6) _cf.set(0, 0, -1);
+    _cf.normalize();
+    return { x: _cf.x * fwd - _cf.z * side, z: _cf.z * fwd + _cf.x * side };
+  }
+  const myBody = () => (me.fire >= 0 ? people.get('me') : null);
+  function startMyUp() {
+    const p = myBody();
+    if (!p || p.free || p.act) return;
+    startUp(p);
+    const g = p.act.path.pts[0];
+    me.free = 1; me.x = +g.x.toFixed(2); me.z = +g.z.toFixed(2); me.ry = +p.act.yaw.toFixed(2);
+    net.setState(stateOut());
+    updateSitBtn();
+  }
+  /* wants to move: stand up if seated, stop walking home, then follow along with the camera */
+  function onMoveIntent() {
+    const p = myBody();
+    if (!p) return false;
+    if (p.act && p.act.kind === 'home') {
+      const A = p.act;
+      p.act = null;
+      standAt(p, p.grp.position.x, p.grp.position.z, A.yaw);
+      me.free = 1; net.setState(stateOut());
+    }
+    if (p.act) return p.act.kind === 'up';
+    if (!p.free) startMyUp();
+    if (controls.autoRotate) setSpin(false);
+    if (viewMode !== 'me') followMe();
+    updateSitBtn();
+    return true;
+  }
+  function setRoute(p, goal) {
+    const pts = [];
+    routeAround(pts, p.pos.clone(), goal, new Set());
+    pts.forEach(q => { const r = Math.hypot(q.x, q.z); if (r > WALK_R) q.multiplyScalar(WALK_R / r); });
+    myRoute = { pts, i: 0, stuck: 0 };
+  }
+  const _plane = new THREE.Plane(new V3(0, 1, 0), 0);
+  function walkToRay() {
+    const p = myBody();
+    if (!p) return;
+    const goal = ray.ray.intersectPlane(_plane, new V3());
+    if (!goal) return;
+    goal.y = 0;
+    for (let i = 0; i < 3; i++) {             // nudge the spot off anything solid and inside the walkable area
+      for (const o of OBST) { const dx = goal.x - o.c.x, dz = goal.z - o.c.z, d = Math.hypot(dx, dz); if (d < o.cr + 0.15) { const k = (o.cr + 0.15) / Math.max(d, 1e-4); goal.x = o.c.x + dx * k; goal.z = o.c.z + dz * k; } }
+      const r = Math.hypot(goal.x, goal.z); if (r > WALK_R - 0.1) goal.multiplyScalar((WALK_R - 0.1) / r);
+    }
+    if (p.act && p.act.kind === 'wish') return;
+    marker.position.set(goal.x, 0.05, goal.z);
+    marker.visible = true;
+    if (!onMoveIntent()) { marker.visible = false; return; }
+    if (p.free) setRoute(p, goal);
+    else pendingGoal = goal;                  // still standing up: go once on our feet
+  }
+  async function mySit() {
+    const p = myBody();
+    if (!p || !p.free || p.act || mySitting) return;
+    myRoute = null; pendingGoal = null; marker.visible = false;
+    const k = nearFire(p.pos);
+    if (k >= 0 && k !== me.fire) {
+      mySitting = true;
+      const from = me.fire;
+      try {
+        if (net.scope !== 'all') { setStatus('모닥불 ' + (k + 1) + ' 자리를 살펴보는 중…'); await net.enter(k); await sleep(Math.min(net.settle(k), 2500)); }
+        const taken = new Set(seatedHere(k).map(q => q.state.seat));
+        let seat = -1, bd = Infinity;
+        FIRES[k].seats.forEach((s, i) => { if (taken.has(i)) return; const d = s.position.distanceToSquared(p.pos); if (d < bd) { bd = d; seat = i; } });
+        if (seat < 0) {
+          announce('모닥불 ' + (k + 1) + '은 자리가 다 찼어요');
+          if (net.scope !== 'all') await net.enter(from);
+          return;
+        }
+        if (!p.free || p.act) return;
+        me.fire = k; me.seat = seat; me.t = Date.now();
+        p.fire = k; p.seat = seat;
+        announce('모닥불 ' + (k + 1) + '에 앉으러 가요');
+      } finally { mySitting = false; }
+    }
+    startHome(p);
+    me.free = 0;
+    net.setState(stateOut());
+    reconcile();
+    updateSitBtn();
+  }
+  function updateSitBtn() {
+    const p = myBody();
+    let label = '일어서기', off = !p;
+    if (p) {
+      if (p.act) { off = true; label = p.act.kind === 'home' ? '앉으러 가는 중…' : p.act.kind === 'up' ? '일어서는 중…' : (p.free || p.act.free) ? '걷는 중' : '일어서기'; }
+      else if (p.free) { const k = nearFire(p.pos); label = k >= 0 && k !== me.fire ? '이 모닥불에 앉기' : '내 자리에 앉기'; off = mySitting; }
+    }
+    if (sitBtn.textContent !== label) sitBtn.textContent = label;
+    if (sitBtn.disabled !== off) sitBtn.disabled = off;
+  }
+  sitBtn.addEventListener('click', () => {
+    const p = myBody();
+    if (!p || p.act) return;
+    if (p.free) mySit();
+    else onMoveIntent();
+  });
+  const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); };
+  addEventListener('keydown', e => {
+    if (!KEYMAP[e.code] || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!document.getElementById('namebox').hidden) return;
+    if (e.code.startsWith('Arrow')) e.preventDefault();
+    keys.add(e.code);
+    if (!e.repeat) onMoveIntent();
+  });
+  addEventListener('keyup', e => { keys.delete(e.code); });
+  addEventListener('blur', () => { keys.clear(); resetStick(); });
+  const stickEl = document.getElementById('stick'), knobEl = document.getElementById('knob');
+  function moveStick(e) {
+    const r = stickEl.getBoundingClientRect(), max = r.width * 0.34;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy);
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    knobEl.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+    const nx = dx / max, ny = dy / max, m = Math.hypot(nx, ny);
+    stick.x = m < 0.18 ? 0 : nx; stick.y = m < 0.18 ? 0 : ny;
+  }
+  function resetStick() { stick.x = stick.y = 0; stick.id = null; knobEl.style.transform = ''; stickEl.classList.remove('on'); }
+  stickEl.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    stick.id = e.pointerId;
+    try { stickEl.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
+    stickEl.classList.add('on');
+    moveStick(e);
+    onMoveIntent();
+  });
+  stickEl.addEventListener('pointermove', e => { if (e.pointerId === stick.id) moveStick(e); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => stickEl.addEventListener(n, e => { if (e.pointerId === stick.id) resetStick(); }));
+  stickEl.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* touch: greetings fold into one button, view settings into the corner menu */
+  emoteToggle.addEventListener('click', () => {
+    const open = !emotesEl.classList.contains('open');
+    emotesEl.classList.toggle('open', open);
+    emoteToggle.setAttribute('aria-expanded', String(open));
+  });
+  const closeEmotes = () => { emotesEl.classList.remove('open'); emoteToggle.setAttribute('aria-expanded', 'false'); };
+  const menuBtn = document.getElementById('menuBtn'), menuPanel = document.getElementById('menuPanel');
+  if (TOUCH) menuPanel.appendChild(document.getElementById('minor'));
+  const setMenu = open => { menuPanel.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
+  menuBtn.addEventListener('click', () => setMenu(menuPanel.hidden));
+  addEventListener('keydown', e => { if (e.key === 'Escape') { setMenu(false); closeEmotes(); } });
   let lastEmote = 0;
   function canEmote() {
     const n = performance.now();
@@ -1918,7 +2334,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     const p = people.get('me');
     if (p) p.wave = 2.4;
   }
-  waveBtn.addEventListener('click', myWave);
+  waveBtn.addEventListener('click', () => { myWave(); if (TOUCH) closeEmotes(); });
   const wishBtn = document.getElementById('wishBtn'), wishBox = document.getElementById('wishbox');
   const wishText = document.getElementById('wishText'), wishCount = document.getElementById('wishCount'), wishNote = document.getElementById('wishNote');
   let wishBusy = false;
@@ -1973,7 +2389,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     wishText.value = ''; wishCount.textContent = '0/' + WISH_LEN;
     wishBox.hidden = true; wishBtn.setAttribute('aria-expanded', 'false');
     const p = people.get('me');
-    if (p) { startWish(p, w, true); walkView(w); }
+    if (p) { const wasFree = p.free; startWish(p, w, true); if (!wasFree) walkView(w); }
     if (store.canWrite()) store.add(w).catch(err => {
       console.warn(err);
       announce(err && err.code === 'permission-denied'
@@ -1989,6 +2405,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     net.setState(stateOut());
     const p = people.get('me');
     if (p) showSay(p, k);
+    if (TOUCH) closeEmotes();
   }));
   let showTags = false;
   namesBtn.addEventListener('click', () => {
@@ -2045,12 +2462,28 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     viewMode = 'walk';
     setViewLabel();
   }
-  function setViewLabel() {
-    viewBtn.textContent = viewMode === 'fire' ? '광장 전체 보기' : '내 모닥불 보기';
-    viewBtn.disabled = viewMode !== 'fire' && me.fire < 0;
+  /* follow my character: the camera keeps its angle and slides along as I walk; drag still orbits around me */
+  const followAnchor = new V3(), _anchor = new V3();
+  function myAnchor(out) { const p = people.get('me'); if (!p) return null; return out.set(p.grp.position.x, 0.9, p.grp.position.z); }
+  function followMe() {
+    if (!myAnchor(_anchor)) return;
+    const off = camera.position.clone().sub(controls.target);
+    off.y = 0;
+    if (off.lengthSq() < 0.01) off.set(0, 0, 1);
+    off.normalize().multiplyScalar(portrait() ? 8.6 : 7.2);
+    off.y = portrait() ? 4.4 : 3.6;
+    camTween = { t0: clockT, d: 1.1, fT: controls.target.clone(), fP: camera.position.clone(), tT: new V3(), tP: new V3(), follow: true, off };
+    viewMode = 'me';
+    setViewLabel();
   }
-  viewBtn.addEventListener('click', () => (viewMode === 'fire' ? focusPlaza() : focusFire()));
+  function setViewLabel() {
+    const near = viewMode === 'fire' || viewMode === 'me';
+    viewBtn.textContent = near ? '광장 전체 보기' : me.free ? '내 캐릭터 보기' : '내 모닥불 보기';
+    viewBtn.disabled = !near && me.fire < 0;
+  }
+  viewBtn.addEventListener('click', () => (viewMode === 'fire' || viewMode === 'me' ? focusPlaza() : me.free ? followMe() : focusFire()));
   controls.addEventListener('start', () => { camTween = null; });
+  renderer.domElement.addEventListener('pointerdown', () => { setMenu(false); });
   setControls(false);
 
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -2068,7 +2501,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     const nh = notesIM.count ? ray.intersectObject(notesIM, false)[0] : null;
     if (nh && nh.instanceId != null && noteList[nh.instanceId]) { showNoteBubble(noteList[nh.instanceId], 6); return; }
     const hit = ray.intersectObjects([...people.values()].filter(p => p.grp.visible).map(p => p.grp), true)[0];
-    if (!hit) return;
+    if (!hit) { walkToRay(); return; }
     let o = hit.object;
     while (o && !o.userData.person) o = o.parent;
     if (!o) return;
@@ -2096,7 +2529,7 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
   const easeBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
   const easeInOut = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   const motion = reduceMotion ? 0.35 : 1;
-  let frames = 0, lightClock = 0;
+  let frames = 0, lightClock = 0, lastSent = 0, sitClock = 0;
   const tagV = new V3();
 
   function tick() {
@@ -2147,16 +2580,25 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
     for (const p of people.values()) {
       if (!p.grp.visible) continue;
       const ph = p.ph;
+      if (p.born >= 0) {
+        const k = Math.min(1, (t - p.born) / 0.7);
+        p.grp.scale.setScalar(p.scale * Math.max(0.001, easeBack(k)));
+        if (k >= 1) p.born = -1;
+      }
       if (p.act) {
         runAct(p, dt, t);
         p.blink -= dt;
         if (p.blink < 0) { p.eyes.scale.y = 0.12; if (p.blink < -0.12) { p.blink = 2.2 + Math.random() * 3.3; p.eyes.scale.y = 1; } }
         continue;
       }
-      if (p.born >= 0) {
-        const k = Math.min(1, (t - p.born) / 0.7);
-        p.grp.scale.setScalar(p.scale * Math.max(0.001, easeBack(k)));
-        if (k >= 1) p.born = -1;
+      if (p.free) {
+        let w = 0;
+        if (p.wave > 0) { p.wave -= dt; w = Math.max(0, Math.min(1, p.wave / 0.4, (2.4 - p.wave) / 0.35)); }
+        stepFree(p, dt, t, w);
+        p.head.rotation.set(0, Math.sin(tm * 0.23 + ph * 2) * 0.35 * (1 - p.moveW), Math.sin(tm * 0.37 + ph) * 0.08);
+        p.blink -= dt;
+        if (p.blink < 0) { p.eyes.scale.y = 0.12; if (p.blink < -0.12) { p.blink = 2.2 + Math.random() * 3.3; p.eyes.scale.y = 1; } }
+        continue;
       }
       p.upper.rotation.z = Math.sin(tm * 0.9 + ph) * 0.04;
       p.upper.rotation.x = Math.sin(tm * 0.7 + ph) * 0.025;
@@ -2172,12 +2614,32 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(23px,4.4v
       p.armR.rotation.set(p.rest.rx + (-2.6 - p.rest.rx) * w, 0, p.rest.rz + (0.35 + Math.sin(t * 11) * 0.45 - p.rest.rz) * w);
     }
 
+    /* tell everyone where I am while I walk (a few times a second is plenty; they glide between updates) */
+    const mine = people.get('me');
+    if (mine && me.free === 1 && mine.free && !mine.act && t - lastSent > 0.12) {
+      const x = +mine.pos.x.toFixed(2), z = +mine.pos.z.toFixed(2), ry = +mine.yaw.toFixed(2);
+      if (Math.hypot(x - me.x, z - me.z) > 0.04 || Math.abs(Math.atan2(Math.sin(ry - me.ry), Math.cos(ry - me.ry))) > 0.15
+        || (mine.moveW < 0.05 && (x !== me.x || z !== me.z || ry !== me.ry))) {
+        me.x = x; me.z = z; me.ry = ry;
+        net.setState(stateOut());
+        lastSent = t;
+      }
+    }
+    if (marker.visible) { const s = 1 + 0.18 * Math.sin(t * 6); marker.scale.set(s, 1, s); }
+    if ((sitClock += dt) > 0.25) { sitClock = 0; updateSitBtn(); }
+
+    const anchor = viewMode === 'me' ? myAnchor(_anchor) : null;
     if (camTween) {
       const k = easeInOut(Math.min(1, (t - camTween.t0) / camTween.d));
+      if (camTween.follow && anchor) { camTween.tT.copy(anchor); camTween.tP.copy(anchor).add(camTween.off); }
       controls.target.lerpVectors(camTween.fT, camTween.tT, k);
       camera.position.lerpVectors(camTween.fP, camTween.tP, k);
       if (k >= 1) camTween = null;
+    } else if (anchor) {
+      controls.target.add(_tmp.subVectors(anchor, followAnchor));
+      camera.position.add(_tmp);
     }
+    if (anchor) followAnchor.copy(anchor);
     controls.update();
     composer.render();
     frames++;

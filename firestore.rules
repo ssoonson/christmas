@@ -3,11 +3,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // One wish inside a board. The writer must be signed in (anonymous sign-in is enough)
-    // and can only add a wish under their own uid.
+    // and can only add a wish under their own uid. 'nm' is the optional name typed on entry (12 chars max).
     function validItem(it) {
       return it is map
-        && it.keys().hasOnly(['k', 'text', 'a', 'y', 'seed', 'at', 'uid'])
+        && it.keys().hasOnly(['k', 'text', 'a', 'y', 'seed', 'at', 'uid', 'nm'])
         && it.keys().hasAll(['k', 'text', 'a', 'y', 'seed', 'at', 'uid'])
+        && (!('nm' in it) || (it.nm is string && it.nm.size() <= 12))
         && it.uid == request.auth.uid
         && it.text is string && it.text.size() > 0 && it.text.size() <= 60
         && it.k is string && it.k.matches('[a-z0-9-]{1,40}')
