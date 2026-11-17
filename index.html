@@ -139,6 +139,16 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
 .touch .hint{display:none}
 .touch .dock{gap:12px}
 
+/* 별멍하기: full screen, nothing on top of the night sky but a small close button */
+.stargaze .hud,.stargaze .tags,.stargaze .menupanel,.stargaze .namebox{display:none!important}
+.stargaze #stage canvas{cursor:default}
+.starexit{position:fixed;z-index:80;top:calc(env(safe-area-inset-top,0px) + 16px);right:max(16px,env(safe-area-inset-right,0px));width:48px;height:48px;border-radius:999px;border:1px solid var(--line);background:rgba(12,18,44,.55);color:var(--ink);font:inherit;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .6s ease}
+.starexit.dim{opacity:.3}
+.starexit:hover,.starexit:focus-visible{opacity:1}
+.starexit:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+.starhint{position:fixed;z-index:80;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);margin:0;padding:8px 16px;border-radius:999px;background:rgba(12,18,44,.6);color:var(--ink);font-size:13px;line-height:1.5;text-align:center;pointer-events:none;transition:opacity 1.2s ease}
+.starhint.gone{opacity:0}
+
 @media (max-width:480px){
   .sub{display:none}
   .eyebrow{display:none}
@@ -195,6 +205,7 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
           <button type="button" id="sitBtn" disabled>일어서기</button>
         </div>
         <div class="controls minor" id="minor">
+          <button type="button" id="stargaze">별멍하기</button>
           <button type="button" id="view" disabled>내 모닥불 보기</button>
           <button type="button" id="names" aria-pressed="false">이름표 보기</button>
           <button type="button" id="snow" aria-pressed="true">눈 그치기</button>
@@ -205,6 +216,8 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   </div>
 </div>
 <div class="menupanel" id="menuPanel" hidden></div>
+<button type="button" class="starexit" id="starExit" aria-label="별멍하기 끝내기" title="별멍하기 끝내기 (Esc)" hidden>✕</button>
+<p class="starhint" id="starHint" role="status" hidden></p>
 
 <form class="namebox" id="namebox" hidden>
   <h2>광장에서 쓸 이름</h2>
@@ -2209,7 +2222,9 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
     updateSitBtn();
   }
   /* wants to move: stand up if seated, stop walking home, then follow along with the camera */
+  let stargazing = false;
   function onMoveIntent() {
+    if (stargazing) return false;
     const p = myBody();
     if (!p) return false;
     if (p.act && p.act.kind === 'home') {
@@ -2297,7 +2312,7 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   });
   const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); };
   addEventListener('keydown', e => {
-    if (!KEYMAP[e.code] || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!KEYMAP[e.code] || typing(e) || e.ctrlKey || e.metaKey || e.altKey || stargazing) return;
     if (!document.getElementById('namebox').hidden) return;
     if (e.code.startsWith('Arrow')) e.preventDefault();
     keys.add(e.code);
@@ -2339,7 +2354,11 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   if (TOUCH) menuPanel.appendChild(document.getElementById('minor'));
   const setMenu = open => { menuPanel.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
   menuBtn.addEventListener('click', () => setMenu(menuPanel.hidden));
-  addEventListener('keydown', e => { if (e.key === 'Escape') { setMenu(false); closeEmotes(); } });
+  addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (stargazing) { e.preventDefault(); exitStargaze(); return; }
+    setMenu(false); closeEmotes();
+  });
   let lastEmote = 0;
   function canEmote() {
     const n = performance.now();
@@ -2505,6 +2524,79 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   viewBtn.addEventListener('click', () => (viewMode === 'fire' || viewMode === 'me' ? focusPlaza() : me.free ? followMe() : focusFire()));
   controls.addEventListener('start', () => { camTween = null; });
   renderer.domElement.addEventListener('pointerdown', () => { setMenu(false); });
+
+  /* ---------- 별멍하기: full screen, every control hidden, the camera drifts under the tree looking up at the stars ---------- */
+  const starBtn = document.getElementById('stargaze'), starExit = document.getElementById('starExit'), starHint = document.getElementById('starHint');
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  let starSaved = null, starWentFull = false, starDimTimer = 0, starHintTimer = 0, starRestoreTimer = 0;
+  function starWake() {                     // the ✕ fades while you watch, and comes back when you move the mouse or touch
+    if (!stargazing) return;
+    starExit.classList.remove('dim');
+    clearTimeout(starDimTimer);
+    starDimTimer = setTimeout(() => starExit.classList.add('dim'), 2600);
+  }
+  function enterStargaze() {
+    if (stargazing) return;
+    stargazing = true;
+    setMenu(false); closeEmotes();
+    keys.clear(); resetStick();
+    myRoute = null; pendingGoal = null; marker.visible = false;
+    clearTimeout(starRestoreTimer);
+    starSaved = starSaved || { target: controls.target.clone(), pos: camera.position.clone(), auto: controls.autoRotate, speed: controls.autoRotateSpeed, view: viewMode,
+      minD: controls.minDistance, maxD: controls.maxDistance, minP: controls.minPolarAngle, maxP: controls.maxPolarAngle };
+    document.documentElement.classList.add('stargaze');
+    starExit.hidden = false;
+    starHint.textContent = TOUCH ? '별멍하기 중이에요 · 오른쪽 위 ✕를 누르면 끝나요' : '별멍하기 중이에요 · Esc 또는 오른쪽 위 ✕를 누르면 끝나요';
+    starHint.hidden = false; starHint.classList.remove('gone');
+    clearTimeout(starHintTimer);
+    starHintTimer = setTimeout(() => starHint.classList.add('gone'), 3500);
+    starWake();
+    starWentFull = false;
+    const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !fsElement()) {
+      try { const r = req.call(el); starWentFull = true; if (r && r.catch) r.catch(() => { starWentFull = false; }); }
+      catch (e) { starWentFull = false; }            // no full screen here (e.g. iPhone, or inside a frame): the hidden controls are enough
+    }
+    /* stand between the plaza curb and the outer fires, low down, looking up past the tree top */
+    const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+    Object.assign(controls, { minDistance: 13, maxDistance: 18, minPolarAngle: 1.25, maxPolarAngle: 1.98, autoRotateSpeed: 0.18 });
+    controls.autoRotate = !reduceMotion;
+    glide(new V3(0, 7.5, 0), new V3(Math.sin(az) * 15, 2.0, Math.cos(az) * 15));
+    camTween.d = 2.6;
+    viewMode = 'stars';
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // no focus ring over the sky; Esc still works
+  }
+  function exitStargaze() {
+    if (!stargazing) return;
+    stargazing = false;
+    document.documentElement.classList.remove('stargaze');
+    starExit.hidden = true; starHint.hidden = true;
+    clearTimeout(starDimTimer); clearTimeout(starHintTimer);
+    if (fsElement()) {
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      try { const r = ex && ex.call(document); if (r && r.catch) r.catch(() => {}); } catch (e) { /* already out */ }
+    }
+    const s = starSaved;
+    if (!s) return;
+    controls.autoRotateSpeed = s.speed;
+    setSpin(s.auto);
+    if (s.view === 'me' && people.get('me')) followMe();
+    else { glide(s.target, s.pos); viewMode = s.view; setViewLabel(); }
+    /* put the usual camera limits back once the glide home is done, so the camera doesn't jump on the way */
+    starRestoreTimer = setTimeout(() => {
+      if (stargazing) return;
+      Object.assign(controls, { minDistance: s.minD, maxDistance: s.maxD, minPolarAngle: s.minP, maxPolarAngle: s.maxP });
+      starSaved = null;
+    }, 2200);
+    try { starBtn.focus({ preventScroll: true }); } catch (e) { /* focus is optional */ }
+  }
+  starBtn.addEventListener('click', enterStargaze);
+  starExit.addEventListener('click', exitStargaze);
+  const onFsChange = () => { if (!fsElement() && stargazing && starWentFull) exitStargaze(); };   // Esc in full screen is taken by the browser
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+  ['pointermove', 'pointerdown', 'touchstart'].forEach(n => addEventListener(n, starWake, { passive: true }));
+
   setControls(false);
 
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -2512,6 +2604,7 @@ kbd{font:inherit;font-size:11px;min-width:18px;padding:0 4px;border-radius:5px;b
   const cvs = renderer.domElement;
   cvs.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
   cvs.addEventListener('pointerup', e => {
+    if (stargazing) { down = null; return; }
     if (!down) return;
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dt = performance.now() - down.t;
     down = null;
